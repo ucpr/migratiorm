@@ -1,4 +1,4 @@
-package migratiorm
+package comparator
 
 import (
 	"fmt"
@@ -58,18 +58,18 @@ type CompareResult struct {
 	Differences []Difference
 }
 
-// comparator compares query sets and reports differences.
-type comparator struct {
+// Comparator compares query sets and reports differences.
+type Comparator struct {
 	mode CompareMode
 }
 
-// newComparator creates a new comparator with the given mode.
-func newComparator(mode CompareMode) *comparator {
-	return &comparator{mode: mode}
+// New creates a new Comparator with the given mode.
+func New(mode CompareMode) *Comparator {
+	return &Comparator{mode: mode}
 }
 
-// Compare compares expected and actual queries.
-func (c *comparator) Compare(expected, actual []Query) CompareResult {
+// Compare compares expected and actual normalized query strings.
+func (c *Comparator) Compare(expected, actual []string) CompareResult {
 	switch c.mode {
 	case CompareUnordered:
 		return c.compareUnordered(expected, actual)
@@ -79,7 +79,7 @@ func (c *comparator) Compare(expected, actual []Query) CompareResult {
 }
 
 // compareStrict compares queries in order.
-func (c *comparator) compareStrict(expected, actual []Query) CompareResult {
+func (c *Comparator) compareStrict(expected, actual []string) CompareResult {
 	result := CompareResult{
 		Equal:       true,
 		Differences: make([]Difference, 0),
@@ -94,24 +94,24 @@ func (c *comparator) compareStrict(expected, actual []Query) CompareResult {
 		if i >= len(expected) {
 			// Extra query in actual
 			diff.Type = DiffExtra
-			diff.Actual = actual[i].Normalized
+			diff.Actual = actual[i]
 			result.Equal = false
 		} else if i >= len(actual) {
 			// Missing query in actual
 			diff.Type = DiffMissing
-			diff.Expected = expected[i].Normalized
+			diff.Expected = expected[i]
 			result.Equal = false
-		} else if expected[i].Normalized != actual[i].Normalized {
+		} else if expected[i] != actual[i] {
 			// Modified query
 			diff.Type = DiffModified
-			diff.Expected = expected[i].Normalized
-			diff.Actual = actual[i].Normalized
+			diff.Expected = expected[i]
+			diff.Actual = actual[i]
 			result.Equal = false
 		} else {
 			// Match
 			diff.Type = DiffMatch
-			diff.Expected = expected[i].Normalized
-			diff.Actual = actual[i].Normalized
+			diff.Expected = expected[i]
+			diff.Actual = actual[i]
 		}
 
 		result.Differences = append(result.Differences, diff)
@@ -121,7 +121,7 @@ func (c *comparator) compareStrict(expected, actual []Query) CompareResult {
 }
 
 // compareUnordered compares queries as sets.
-func (c *comparator) compareUnordered(expected, actual []Query) CompareResult {
+func (c *Comparator) compareUnordered(expected, actual []string) CompareResult {
 	result := CompareResult{
 		Equal:       true,
 		Differences: make([]Difference, 0),
@@ -130,49 +130,49 @@ func (c *comparator) compareUnordered(expected, actual []Query) CompareResult {
 	// Build a map of expected queries
 	expectedMap := make(map[string]int)
 	for _, q := range expected {
-		expectedMap[q.Normalized]++
+		expectedMap[q]++
 	}
 
 	// Build a map of actual queries
 	actualMap := make(map[string]int)
 	for _, q := range actual {
-		actualMap[q.Normalized]++
+		actualMap[q]++
 	}
 
 	// Find missing queries (in expected but not in actual)
 	idx := 0
 	for _, q := range expected {
-		if actualMap[q.Normalized] <= 0 {
+		if actualMap[q] <= 0 {
 			result.Differences = append(result.Differences, Difference{
 				Type:     DiffMissing,
 				Index:    idx,
-				Expected: q.Normalized,
+				Expected: q,
 			})
 			result.Equal = false
 		} else {
 			result.Differences = append(result.Differences, Difference{
 				Type:     DiffMatch,
 				Index:    idx,
-				Expected: q.Normalized,
-				Actual:   q.Normalized,
+				Expected: q,
+				Actual:   q,
 			})
-			actualMap[q.Normalized]--
+			actualMap[q]--
 		}
 		idx++
 	}
 
 	// Find extra queries (in actual but not in expected)
 	for _, q := range actual {
-		if expectedMap[q.Normalized] <= 0 {
+		if expectedMap[q] <= 0 {
 			result.Differences = append(result.Differences, Difference{
 				Type:   DiffExtra,
 				Index:  idx,
-				Actual: q.Normalized,
+				Actual: q,
 			})
 			result.Equal = false
 			idx++
 		} else {
-			expectedMap[q.Normalized]--
+			expectedMap[q]--
 		}
 	}
 
@@ -180,11 +180,11 @@ func (c *comparator) compareUnordered(expected, actual []Query) CompareResult {
 }
 
 // FormatDifferences formats the differences as a human-readable string.
-func FormatDifferences(result CompareResult, expected, actual []Query) string {
+func FormatDifferences(result CompareResult, expectedCount, actualCount int) string {
 	var sb strings.Builder
 
 	sb.WriteString("migratiorm: queries do not match\n\n")
-	sb.WriteString(fmt.Sprintf("Expected %d queries, got %d queries\n\n", len(expected), len(actual)))
+	sb.WriteString(fmt.Sprintf("Expected %d queries, got %d queries\n\n", expectedCount, actualCount))
 	sb.WriteString("Differences:\n")
 
 	for _, diff := range result.Differences {

@@ -1,4 +1,4 @@
-package migratiorm
+package capturer
 
 import (
 	"context"
@@ -12,17 +12,23 @@ import (
 	"github.com/ucpr/migratiorm/internal/normalizer"
 )
 
-// capturer captures SQL queries executed against a database.
-type capturer struct {
+// RawQuery holds the raw captured query data.
+type RawQuery struct {
+	Query string
+	Args  []any
+}
+
+// Capturer captures SQL queries executed against a database.
+type Capturer struct {
 	db         *sql.DB
 	driver     *capturingDriver
 	normalizer *normalizer.Normalizer
 }
 
-// newCapturer creates a new capturer instance.
-func newCapturer(n *normalizer.Normalizer) (*capturer, error) {
+// New creates a new Capturer instance.
+func New(n *normalizer.Normalizer) (*Capturer, error) {
 	drv := &capturingDriver{
-		queries:    make([]rawQuery, 0),
+		queries:    make([]RawQuery, 0),
 		normalizer: n,
 	}
 
@@ -34,7 +40,7 @@ func newCapturer(n *normalizer.Normalizer) (*capturer, error) {
 		return nil, err
 	}
 
-	return &capturer{
+	return &Capturer{
 		db:         db,
 		driver:     drv,
 		normalizer: n,
@@ -42,29 +48,28 @@ func newCapturer(n *normalizer.Normalizer) (*capturer, error) {
 }
 
 // DB returns the database connection for use by ORMs.
-func (c *capturer) DB() *sql.DB {
+func (c *Capturer) DB() *sql.DB {
 	return c.db
 }
 
-// Queries returns all captured queries.
-func (c *capturer) Queries() []Query {
-	return c.driver.Queries()
+// RawQueries returns all captured raw queries.
+func (c *Capturer) RawQueries() []RawQuery {
+	return c.driver.RawQueries()
 }
 
 // Close closes the database connection.
-func (c *capturer) Close() error {
+func (c *Capturer) Close() error {
 	return c.db.Close()
 }
 
-// rawQuery holds the raw captured query data.
-type rawQuery struct {
-	query string
-	args  []any
+// Normalizer returns the normalizer used by this capturer.
+func (c *Capturer) Normalizer() *normalizer.Normalizer {
+	return c.normalizer
 }
 
 // capturingDriver is a database driver that captures all executed queries.
 type capturingDriver struct {
-	queries    []rawQuery
+	queries    []RawQuery
 	normalizer *normalizer.Normalizer
 	mu         sync.Mutex
 }
@@ -87,24 +92,16 @@ func (d *capturingDriver) Open(name string) (driver.Conn, error) {
 func (d *capturingDriver) recordQuery(query string, args []any) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	d.queries = append(d.queries, rawQuery{query: query, args: args})
+	d.queries = append(d.queries, RawQuery{Query: query, Args: args})
 }
 
-// Queries returns all captured queries as Query structs.
-func (d *capturingDriver) Queries() []Query {
+// RawQueries returns all captured raw queries.
+func (d *capturingDriver) RawQueries() []RawQuery {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	result := make([]Query, len(d.queries))
-	for i, rq := range d.queries {
-		normalized := d.normalizer.Normalize(rq.query)
-		result[i] = Query{
-			Raw:        rq.query,
-			Normalized: normalized,
-			Args:       rq.args,
-			Operation:  detectOperation(rq.query),
-		}
-	}
+	result := make([]RawQuery, len(d.queries))
+	copy(result, d.queries)
 	return result
 }
 

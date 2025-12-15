@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/ucpr/migratiorm/internal/capturer"
+	"github.com/ucpr/migratiorm/internal/comparator"
 	"github.com/ucpr/migratiorm/internal/normalizer"
 )
 
@@ -11,7 +13,7 @@ import (
 type Migratiorm struct {
 	options    options
 	normalizer *normalizer.Normalizer
-	comparator *comparator
+	comparator *comparator.Comparator
 	expected   []Query
 	actual     []Query
 }
@@ -26,7 +28,7 @@ func New(opts ...Option) *Migratiorm {
 	return &Migratiorm{
 		options:    o,
 		normalizer: normalizer.New(o.normalizerOptions),
-		comparator: newComparator(o.compareMode),
+		comparator: comparator.New(o.compareMode),
 		expected:   make([]Query, 0),
 		actual:     make([]Query, 0),
 	}
@@ -35,7 +37,7 @@ func New(opts ...Option) *Migratiorm {
 // Expect captures queries from the expected (source) ORM.
 // The callback receives a *sql.DB that should be passed to the ORM.
 func (m *Migratiorm) Expect(fn func(db *sql.DB)) {
-	cap, err := newCapturer(m.normalizer)
+	cap, err := capturer.New(m.normalizer)
 	if err != nil {
 		// Store error state - will be reported during Assert
 		return
@@ -44,13 +46,13 @@ func (m *Migratiorm) Expect(fn func(db *sql.DB)) {
 
 	fn(cap.DB())
 
-	m.expected = cap.Queries()
+	m.expected = m.buildQueries(cap.RawQueries())
 }
 
 // Actual captures queries from the actual (target) ORM.
 // The callback receives a *sql.DB that should be passed to the ORM.
 func (m *Migratiorm) Actual(fn func(db *sql.DB)) {
-	cap, err := newCapturer(m.normalizer)
+	cap, err := capturer.New(m.normalizer)
 	if err != nil {
 		// Store error state - will be reported during Assert
 		return
@@ -59,7 +61,22 @@ func (m *Migratiorm) Actual(fn func(db *sql.DB)) {
 
 	fn(cap.DB())
 
-	m.actual = cap.Queries()
+	m.actual = m.buildQueries(cap.RawQueries())
+}
+
+// buildQueries converts raw queries to Query objects with normalization.
+func (m *Migratiorm) buildQueries(rawQueries []capturer.RawQuery) []Query {
+	result := make([]Query, len(rawQueries))
+	for i, rq := range rawQueries {
+		normalized := m.normalizer.Normalize(rq.Query)
+		result[i] = Query{
+			Raw:        rq.Query,
+			Normalized: normalized,
+			Args:       rq.Args,
+			Operation:  detectOperation(rq.Query),
+		}
+	}
+	return result
 }
 
 // Assert compares the expected and actual queries and fails the test if they don't match.
@@ -80,13 +97,23 @@ func (m *Migratiorm) AssertWithOptions(t testing.TB, opts ...AssertOption) {
 	// Determine comparison mode
 	comp := m.comparator
 	if assertOpts.ignoreOrder {
-		comp = newComparator(CompareUnordered)
+		comp = comparator.New(comparator.CompareUnordered)
 	}
 
-	result := comp.Compare(m.expected, m.actual)
+	// Extract normalized queries for comparison
+	expectedNormalized := make([]string, len(m.expected))
+	for i, q := range m.expected {
+		expectedNormalized[i] = q.Normalized
+	}
+	actualNormalized := make([]string, len(m.actual))
+	for i, q := range m.actual {
+		actualNormalized[i] = q.Normalized
+	}
+
+	result := comp.Compare(expectedNormalized, actualNormalized)
 
 	if !result.Equal {
-		t.Error(FormatDifferences(result, m.expected, m.actual))
+		t.Error(comparator.FormatDifferences(result, len(m.expected), len(m.actual)))
 	}
 }
 

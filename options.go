@@ -1,20 +1,32 @@
 package migratiorm
 
-import "github.com/ucpr/migratiorm/internal/normalizer"
+import (
+	"github.com/ucpr/migratiorm/internal/comparator"
+	"github.com/ucpr/migratiorm/internal/normalizer"
+)
+
+// CompareMode defines how queries should be compared.
+type CompareMode = comparator.CompareMode
+
+// Comparison mode constants.
+const (
+	CompareStrict    = comparator.CompareStrict
+	CompareUnordered = comparator.CompareUnordered
+)
 
 // Option configures a Migratiorm instance.
 type Option func(*options)
 
 // options holds the configuration for Migratiorm.
 type options struct {
-	compareMode       CompareMode
+	compareMode       comparator.CompareMode
 	normalizerOptions normalizer.Options
 }
 
 // defaultOptions returns the default options.
 func defaultOptions() options {
 	return options{
-		compareMode:       CompareStrict,
+		compareMode:       comparator.CompareStrict,
 		normalizerOptions: normalizer.DefaultOptions(),
 	}
 }
