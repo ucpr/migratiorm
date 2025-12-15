@@ -579,6 +579,177 @@ func TestNormalizer_Normalize(t *testing.T) {
 				NormalizeTableQualifiers: true,
 			},
 		},
+		// Edge case: Table alias (should NOT normalize - alias is different from table name)
+		{
+			name:     "preserves table alias qualifier",
+			input:    "SELECT * FROM users u WHERE u.age >= ?",
+			expected: "SELECT * FROM users u WHERE u.age >= ?",
+			options: Options{
+				UnifyPlaceholders:        true,
+				RemoveComments:           true,
+				UppercaseKeywords:        true,
+				RemoveQuotes:             true,
+				NormalizeTableQualifiers: true,
+			},
+		},
+		// Edge case: Comma-join (implicit join - multiple tables)
+		{
+			name:     "preserves qualifier with comma join",
+			input:    "SELECT * FROM users, orders WHERE users.id = orders.user_id",
+			expected: "SELECT * FROM users, orders WHERE users.id = orders.user_id",
+			options: Options{
+				UnifyPlaceholders:        true,
+				RemoveComments:           true,
+				UppercaseKeywords:        true,
+				RemoveQuotes:             true,
+				NormalizeTableQualifiers: true,
+			},
+		},
+		// Edge case: EXISTS subquery
+		{
+			name:     "preserves qualifier with EXISTS subquery",
+			input:    "SELECT * FROM users WHERE EXISTS (SELECT 1 FROM orders WHERE orders.user_id = users.id)",
+			expected: "SELECT * FROM users WHERE EXISTS (SELECT 1 FROM orders WHERE orders.user_id = users.id)",
+			options: Options{
+				UnifyPlaceholders:        true,
+				RemoveComments:           true,
+				UppercaseKeywords:        true,
+				RemoveQuotes:             true,
+				NormalizeTableQualifiers: true,
+			},
+		},
+		// Edge case: INNER JOIN (should also preserve)
+		{
+			name:     "preserves qualifier with INNER JOIN",
+			input:    "SELECT * FROM users INNER JOIN orders ON users.id = orders.user_id",
+			expected: "SELECT * FROM users INNER JOIN orders ON users.id = orders.user_id",
+			options: Options{
+				UnifyPlaceholders:        true,
+				RemoveComments:           true,
+				UppercaseKeywords:        true,
+				RemoveQuotes:             true,
+				NormalizeTableQualifiers: true,
+			},
+		},
+		// Edge case: UPDATE without WHERE
+		{
+			name:     "sorts UPDATE SET columns without WHERE",
+			input:    "UPDATE users SET name = ?, age = ?",
+			expected: "UPDATE users SET age = ?, name = ?",
+			options: Options{
+				UnifyPlaceholders: true,
+				RemoveComments:    true,
+				UppercaseKeywords: true,
+				RemoveQuotes:      true,
+				SortUpdateColumns: true,
+			},
+		},
+		// Edge case: UPDATE with expression
+		// Note: "count" is uppercased because it's a SQL keyword (COUNT function)
+		// This is expected behavior - column names matching keywords will be uppercased
+		{
+			name:     "sorts UPDATE SET with expression",
+			input:    "UPDATE users SET count = count + 1, name = ? WHERE id = ?",
+			expected: "UPDATE users SET COUNT = COUNT + 1, name = ? WHERE id = ?",
+			options: Options{
+				UnifyPlaceholders: true,
+				RemoveComments:    true,
+				UppercaseKeywords: true,
+				RemoveQuotes:      true,
+				SortUpdateColumns: true,
+			},
+		},
+		// Edge case: ORDER BY with OFFSET
+		{
+			name:     "removes ASC with OFFSET",
+			input:    "SELECT * FROM users ORDER BY name ASC LIMIT 10 OFFSET 5",
+			expected: "SELECT * FROM users ORDER BY name LIMIT 10 OFFSET 5",
+			options: Options{
+				UnifyPlaceholders:   true,
+				RemoveComments:      true,
+				UppercaseKeywords:   true,
+				RemoveQuotes:        true,
+				NormalizeOrderByAsc: true,
+			},
+		},
+		// Edge case: SELECT with function (should normalize to *)
+		{
+			name:     "normalizes SELECT with COUNT to star",
+			input:    "SELECT COUNT(*) FROM users",
+			expected: "SELECT * FROM users",
+			options: Options{
+				UnifyPlaceholders:      true,
+				RemoveComments:         true,
+				UppercaseKeywords:      true,
+				RemoveQuotes:           true,
+				NormalizeSelectColumns: true,
+			},
+		},
+		// Edge case: SELECT with alias
+		{
+			name:     "normalizes SELECT with alias to star",
+			input:    "SELECT id AS user_id, name AS user_name FROM users",
+			expected: "SELECT * FROM users",
+			options: Options{
+				UnifyPlaceholders:      true,
+				RemoveComments:         true,
+				UppercaseKeywords:      true,
+				RemoveQuotes:           true,
+				NormalizeSelectColumns: true,
+			},
+		},
+		// Edge case: Multiple JOINs
+		{
+			name:     "normalizes multiple JOINs",
+			input:    "SELECT * FROM users INNER JOIN orders ON users.id = orders.user_id LEFT OUTER JOIN items ON orders.id = items.order_id",
+			expected: "SELECT * FROM users JOIN orders ON users.id = orders.user_id LEFT JOIN items ON orders.id = items.order_id",
+			options: Options{
+				UnifyPlaceholders:   true,
+				RemoveComments:      true,
+				UppercaseKeywords:   true,
+				RemoveQuotes:        true,
+				NormalizeJoinSyntax: true,
+			},
+		},
+		// Edge case: CROSS JOIN unchanged
+		{
+			name:     "preserves CROSS JOIN",
+			input:    "SELECT * FROM users CROSS JOIN products",
+			expected: "SELECT * FROM users CROSS JOIN products",
+			options: Options{
+				UnifyPlaceholders:   true,
+				RemoveComments:      true,
+				UppercaseKeywords:   true,
+				RemoveQuotes:        true,
+				NormalizeJoinSyntax: true,
+			},
+		},
+		// Edge case: lowercase RETURNING
+		{
+			name:     "removes lowercase returning clause",
+			input:    "INSERT INTO users (name) VALUES (?) returning id",
+			expected: "INSERT INTO users (name) VALUES (?)",
+			options: Options{
+				UnifyPlaceholders:     true,
+				RemoveComments:        true,
+				UppercaseKeywords:     true,
+				RemoveQuotes:          true,
+				RemoveReturningClause: true,
+			},
+		},
+		// Edge case: schema.table.column (should preserve schema)
+		{
+			name:     "preserves schema prefix in table qualifier",
+			input:    "SELECT * FROM public.users WHERE public.users.age >= ?",
+			expected: "SELECT * FROM public.users WHERE public.users.age >= ?",
+			options: Options{
+				UnifyPlaceholders:        true,
+				RemoveComments:           true,
+				UppercaseKeywords:        true,
+				RemoveQuotes:             true,
+				NormalizeTableQualifiers: true,
+			},
+		},
 	}
 
 	for _, tt := range tests {

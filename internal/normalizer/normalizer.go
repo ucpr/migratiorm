@@ -342,24 +342,19 @@ func sortInsertColumns(query string) string {
 // sortUpdateColumns sorts the SET column order in UPDATE statements for comparison.
 // UPDATE t SET c = ?, b = ?, a = ? WHERE ... → UPDATE t SET a = ?, b = ?, c = ? WHERE ...
 func sortUpdateColumns(query string) string {
-	// Match UPDATE table SET ... WHERE pattern
-	// We need to be careful to only sort the SET clause, not the WHERE clause
-	re := regexp.MustCompile(`(?i)(UPDATE\s+\w+\s+SET\s+)(.+?)(\s+WHERE\b.*)`)
+	// First try to match UPDATE with WHERE clause
+	reWithWhere := regexp.MustCompile(`(?i)(UPDATE\s+\w+\s+SET\s+)(.+?)(\s+WHERE\b.*)`)
+	if matches := reWithWhere.FindStringSubmatch(query); len(matches) >= 4 {
+		return sortUpdateSetClause(matches[1], matches[2], matches[3])
+	}
 
-	return re.ReplaceAllStringFunc(query, func(match string) string {
-		submatches := re.FindStringSubmatch(match)
-		if len(submatches) < 4 {
-			// Try without WHERE clause
-			reNoWhere := regexp.MustCompile(`(?i)(UPDATE\s+\w+\s+SET\s+)(.+)$`)
-			submatchesNoWhere := reNoWhere.FindStringSubmatch(match)
-			if len(submatchesNoWhere) < 3 {
-				return match
-			}
-			return sortUpdateSetClause(submatchesNoWhere[1], submatchesNoWhere[2], "")
-		}
+	// Try to match UPDATE without WHERE clause
+	reNoWhere := regexp.MustCompile(`(?i)(UPDATE\s+\w+\s+SET\s+)(.+)$`)
+	if matches := reNoWhere.FindStringSubmatch(query); len(matches) >= 3 {
+		return sortUpdateSetClause(matches[1], matches[2], "")
+	}
 
-		return sortUpdateSetClause(submatches[1], submatches[2], submatches[3])
-	})
+	return query
 }
 
 // sortUpdateSetClause sorts the SET clause assignments.
@@ -485,6 +480,16 @@ func normalizeTableQualifiers(query string) string {
 		return query
 	}
 
+	// Check for multiple tables (comma join) - if present, don't normalize
+	if hasMultipleTables(upperQuery) {
+		return query
+	}
+
+	// Check for schema-qualified table name - if present, don't normalize
+	if hasSchemaPrefix(query) {
+		return query
+	}
+
 	// Extract table name from the query
 	tableName := extractTableName(query)
 	if tableName == "" {
@@ -534,6 +539,22 @@ func hasSubquery(upperQuery string) bool {
 		}
 	}
 	return false
+}
+
+// hasMultipleTables checks if the query has multiple tables (comma join).
+func hasMultipleTables(upperQuery string) bool {
+	// Look for comma-separated tables in FROM clause
+	// Pattern: FROM table1, table2 or FROM table1 , table2
+	re := regexp.MustCompile(`\bFROM\s+\w+\s*,`)
+	return re.MatchString(upperQuery)
+}
+
+// hasSchemaPrefix checks if the query has schema-qualified table names.
+func hasSchemaPrefix(query string) bool {
+	// Look for schema.table pattern in FROM/UPDATE/INSERT INTO clause
+	// Pattern: FROM schema.table or UPDATE schema.table
+	re := regexp.MustCompile(`(?i)\b(FROM|UPDATE|INSERT\s+INTO)\s+\w+\.\w+`)
+	return re.MatchString(query)
 }
 
 // extractTableName extracts the main table name from a SQL query.
