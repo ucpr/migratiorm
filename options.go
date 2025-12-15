@@ -55,11 +55,19 @@ func WithRemoveQuotes(enabled bool) Option {
 }
 
 // WithSemanticComparison enables semantic comparison mode.
-// When enabled, SELECT column lists are normalized to *, making
-// "SELECT *" and "SELECT id, name" semantically equivalent.
+// When enabled, the following normalizations are applied:
+//   - SELECT column lists are normalized to * (SELECT id, name → SELECT *)
+//   - JOIN syntax is normalized (INNER JOIN → JOIN, LEFT OUTER JOIN → LEFT JOIN)
+//   - Redundant ASC in ORDER BY is removed (ORDER BY x ASC → ORDER BY x)
+//   - INSERT column order is sorted alphabetically
+//   - UPDATE SET column order is sorted alphabetically
 func WithSemanticComparison(enabled bool) Option {
 	return func(o *options) {
 		o.normalizerOptions.NormalizeSelectColumns = enabled
+		o.normalizerOptions.NormalizeJoinSyntax = enabled
+		o.normalizerOptions.NormalizeOrderByAsc = enabled
+		o.normalizerOptions.SortInsertColumns = enabled
+		o.normalizerOptions.SortUpdateColumns = enabled
 	}
 }
 

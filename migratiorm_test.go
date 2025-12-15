@@ -304,3 +304,84 @@ func TestMigratiorm_SemanticComparisonDisabled(t *testing.T) {
 		t.Error("Expected queries to differ when semantic comparison is disabled")
 	}
 }
+
+func TestMigratiorm_SemanticComparisonJoinSyntax(t *testing.T) {
+	m := migratiorm.New(
+		migratiorm.WithSemanticComparison(true),
+	)
+
+	m.Expect(func(db *sql.DB) {
+		db.Query("SELECT * FROM users INNER JOIN orders ON users.id = orders.user_id")
+	})
+
+	m.Actual(func(db *sql.DB) {
+		db.Query("SELECT * FROM users JOIN orders ON users.id = orders.user_id")
+	})
+
+	m.Assert(t)
+}
+
+func TestMigratiorm_SemanticComparisonOrderByAsc(t *testing.T) {
+	m := migratiorm.New(
+		migratiorm.WithSemanticComparison(true),
+	)
+
+	m.Expect(func(db *sql.DB) {
+		db.Query("SELECT * FROM users ORDER BY name ASC")
+	})
+
+	m.Actual(func(db *sql.DB) {
+		db.Query("SELECT * FROM users ORDER BY name")
+	})
+
+	m.Assert(t)
+}
+
+func TestMigratiorm_SemanticComparisonInsertColumns(t *testing.T) {
+	m := migratiorm.New(
+		migratiorm.WithSemanticComparison(true),
+	)
+
+	m.Expect(func(db *sql.DB) {
+		db.Exec("INSERT INTO users (name, email, age) VALUES (?, ?, ?)", "Alice", "alice@example.com", 30)
+	})
+
+	m.Actual(func(db *sql.DB) {
+		db.Exec("INSERT INTO users (age, email, name) VALUES (?, ?, ?)", 30, "alice@example.com", "Alice")
+	})
+
+	m.Assert(t)
+}
+
+func TestMigratiorm_SemanticComparisonUpdateColumns(t *testing.T) {
+	m := migratiorm.New(
+		migratiorm.WithSemanticComparison(true),
+	)
+
+	m.Expect(func(db *sql.DB) {
+		db.Exec("UPDATE users SET name = ?, email = ?, age = ? WHERE id = ?", "Alice", "alice@example.com", 30, 1)
+	})
+
+	m.Actual(func(db *sql.DB) {
+		db.Exec("UPDATE users SET age = ?, email = ?, name = ? WHERE id = ?", 30, "alice@example.com", "Alice", 1)
+	})
+
+	m.Assert(t)
+}
+
+func TestMigratiorm_SemanticComparisonAll(t *testing.T) {
+	m := migratiorm.New(
+		migratiorm.WithSemanticComparison(true),
+	)
+
+	// Test all normalizations at once
+	m.Expect(func(db *sql.DB) {
+		db.Query("SELECT id, name FROM users INNER JOIN orders ON users.id = orders.user_id ORDER BY name ASC")
+	})
+
+	m.Actual(func(db *sql.DB) {
+		db.Query("SELECT * FROM users JOIN orders ON users.id = orders.user_id ORDER BY name")
+	})
+
+	m.Assert(t)
+}
