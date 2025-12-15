@@ -17,6 +17,7 @@ type Options struct {
 	NormalizeOrderByAsc    bool // Remove redundant ASC in ORDER BY (default: false)
 	SortInsertColumns      bool // Sort INSERT column order for comparison (default: false)
 	SortUpdateColumns      bool // Sort UPDATE SET column order for comparison (default: false)
+	RemoveReturningClause  bool // Remove RETURNING clause from INSERT/UPDATE/DELETE (default: false)
 }
 
 // DefaultOptions returns the default normalizer options.
@@ -31,6 +32,7 @@ func DefaultOptions() Options {
 		NormalizeOrderByAsc:    false,
 		SortInsertColumns:      false,
 		SortUpdateColumns:      false,
+		RemoveReturningClause:  false,
 	}
 }
 
@@ -91,6 +93,10 @@ func (n *Normalizer) Normalize(query string) string {
 
 	if n.options.SortUpdateColumns {
 		result = sortUpdateColumns(result)
+	}
+
+	if n.options.RemoveReturningClause {
+		result = removeReturningClause(result)
 	}
 
 	return strings.TrimSpace(result)
@@ -432,4 +438,21 @@ func splitSetClause(s string) []string {
 	}
 
 	return result
+}
+
+// removeReturningClause removes the RETURNING clause from INSERT/UPDATE/DELETE statements.
+// This handles PostgreSQL's RETURNING clause which is used to return values from modified rows.
+// Examples:
+//   - INSERT INTO users (name) VALUES (?) RETURNING id → INSERT INTO users (name) VALUES (?)
+//   - UPDATE users SET name = ? WHERE id = ? RETURNING * → UPDATE users SET name = ? WHERE id = ?
+//   - DELETE FROM users WHERE id = ? RETURNING id, name → DELETE FROM users WHERE id = ?
+func removeReturningClause(query string) string {
+	// Match RETURNING clause and everything after it (column list)
+	// The RETURNING clause can contain:
+	// - Single column: RETURNING id
+	// - Multiple columns: RETURNING id, name, email
+	// - Star: RETURNING *
+	// - Expressions: RETURNING id, created_at
+	re := regexp.MustCompile(`(?i)\s+RETURNING\s+.+$`)
+	return re.ReplaceAllString(query, "")
 }

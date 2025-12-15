@@ -61,6 +61,7 @@ func WithRemoveQuotes(enabled bool) Option {
 //   - Redundant ASC in ORDER BY is removed (ORDER BY x ASC → ORDER BY x)
 //   - INSERT column order is sorted alphabetically
 //   - UPDATE SET column order is sorted alphabetically
+//   - RETURNING clause is removed (INSERT ... RETURNING id → INSERT ...)
 func WithSemanticComparison(enabled bool) Option {
 	return func(o *options) {
 		o.normalizerOptions.NormalizeSelectColumns = enabled
@@ -68,6 +69,7 @@ func WithSemanticComparison(enabled bool) Option {
 		o.normalizerOptions.NormalizeOrderByAsc = enabled
 		o.normalizerOptions.SortInsertColumns = enabled
 		o.normalizerOptions.SortUpdateColumns = enabled
+		o.normalizerOptions.RemoveReturningClause = enabled
 	}
 }
 

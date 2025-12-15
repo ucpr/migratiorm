@@ -397,6 +397,79 @@ func TestNormalizer_Normalize(t *testing.T) {
 				SortUpdateColumns: false,
 			},
 		},
+		// RemoveReturningClause tests
+		{
+			name:     "removes RETURNING clause from INSERT",
+			input:    "INSERT INTO users (name, email) VALUES (?, ?) RETURNING id",
+			expected: "INSERT INTO users (name, email) VALUES (?, ?)",
+			options: Options{
+				UnifyPlaceholders:     true,
+				RemoveComments:        true,
+				UppercaseKeywords:     true,
+				RemoveQuotes:          true,
+				RemoveReturningClause: true,
+			},
+		},
+		{
+			name:     "removes RETURNING * clause",
+			input:    "INSERT INTO users (name) VALUES (?) RETURNING *",
+			expected: "INSERT INTO users (name) VALUES (?)",
+			options: Options{
+				UnifyPlaceholders:     true,
+				RemoveComments:        true,
+				UppercaseKeywords:     true,
+				RemoveQuotes:          true,
+				RemoveReturningClause: true,
+			},
+		},
+		{
+			name:     "removes RETURNING with multiple columns",
+			input:    "INSERT INTO users (name) VALUES (?) RETURNING id, name, created_at",
+			expected: "INSERT INTO users (name) VALUES (?)",
+			options: Options{
+				UnifyPlaceholders:     true,
+				RemoveComments:        true,
+				UppercaseKeywords:     true,
+				RemoveQuotes:          true,
+				RemoveReturningClause: true,
+			},
+		},
+		{
+			name:     "removes RETURNING clause from UPDATE",
+			input:    "UPDATE users SET name = ? WHERE id = ? RETURNING id, name",
+			expected: "UPDATE users SET name = ? WHERE id = ?",
+			options: Options{
+				UnifyPlaceholders:     true,
+				RemoveComments:        true,
+				UppercaseKeywords:     true,
+				RemoveQuotes:          true,
+				RemoveReturningClause: true,
+			},
+		},
+		{
+			name:     "removes RETURNING clause from DELETE",
+			input:    "DELETE FROM users WHERE id = ? RETURNING id",
+			expected: "DELETE FROM users WHERE id = ?",
+			options: Options{
+				UnifyPlaceholders:     true,
+				RemoveComments:        true,
+				UppercaseKeywords:     true,
+				RemoveQuotes:          true,
+				RemoveReturningClause: true,
+			},
+		},
+		{
+			name:     "preserves RETURNING clause when disabled",
+			input:    "INSERT INTO users (name) VALUES (?) RETURNING id",
+			expected: "INSERT INTO users (name) VALUES (?) RETURNING id",
+			options: Options{
+				UnifyPlaceholders:     true,
+				RemoveComments:        true,
+				UppercaseKeywords:     true,
+				RemoveQuotes:          true,
+				RemoveReturningClause: false,
+			},
+		},
 	}
 
 	for _, tt := range tests {

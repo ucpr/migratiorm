@@ -385,3 +385,20 @@ func TestMigratiorm_SemanticComparisonAll(t *testing.T) {
 
 	m.Assert(t)
 }
+
+func TestMigratiorm_SemanticComparisonReturningClause(t *testing.T) {
+	m := migratiorm.New(
+		migratiorm.WithSemanticComparison(true),
+	)
+
+	// SQLBoiler style (with RETURNING) vs GORM style (without RETURNING)
+	m.Expect(func(db *sql.DB) {
+		db.Exec("INSERT INTO users (name, email) VALUES (?, ?) RETURNING id", "Alice", "alice@example.com")
+	})
+
+	m.Actual(func(db *sql.DB) {
+		db.Exec("INSERT INTO users (name, email) VALUES (?, ?)", "Alice", "alice@example.com")
+	})
+
+	m.Assert(t)
+}

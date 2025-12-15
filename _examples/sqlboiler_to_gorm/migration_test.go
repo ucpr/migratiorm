@@ -74,10 +74,12 @@ func TestMigration_FindByAge(t *testing.T) {
 // - Quote style: " vs `
 // - Placeholder style: $1,$2,$3 vs ?,?,?
 // - RETURNING clause (SQLBoiler) vs not (GORM)
+//
+// With SemanticComparison enabled, these differences are normalized.
 func TestMigration_Create(t *testing.T) {
-	t.Skip("RETURNING clause difference - shown for demonstration")
-
-	m := migratiorm.New()
+	m := migratiorm.New(
+		migratiorm.WithSemanticComparison(true),
+	)
 
 	m.Expect(func(db *sql.DB) {
 		repo := NewSQLBoilerUserRepository(db)
