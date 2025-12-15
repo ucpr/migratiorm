@@ -1,6 +1,7 @@
 package normalizer
 
 import (
+	"fmt"
 	"regexp"
 	"sort"
 	"strings"
@@ -8,17 +9,17 @@ import (
 
 // Options contains configuration for the normalizer.
 type Options struct {
-	UnifyPlaceholders         bool // Unify placeholders to ? (default: true)
-	RemoveComments            bool // Remove SQL comments (default: true)
-	UppercaseKeywords         bool // Convert keywords to uppercase (default: true)
-	RemoveQuotes              bool // Remove identifier quotes (default: true)
-	NormalizeSelectColumns    bool // Normalize SELECT columns to * (default: false)
-	NormalizeJoinSyntax       bool // Normalize JOIN syntax: INNER JOIN -> JOIN (default: false)
-	NormalizeOrderByAsc       bool // Remove redundant ASC in ORDER BY (default: false)
-	SortInsertColumns         bool // Sort INSERT column order for comparison (default: false)
-	SortUpdateColumns         bool // Sort UPDATE SET column order for comparison (default: false)
-	RemoveReturningClause     bool // Remove RETURNING clause from INSERT/UPDATE/DELETE (default: false)
-	NormalizeTableQualifiers  bool // Remove redundant table qualifiers in simple queries (default: false)
+	UnifyPlaceholders        bool // Unify placeholders to ? (default: true)
+	RemoveComments           bool // Remove SQL comments (default: true)
+	UppercaseKeywords        bool // Convert keywords to uppercase (default: true)
+	RemoveQuotes             bool // Remove identifier quotes (default: true)
+	NormalizeSelectColumns   bool // Normalize SELECT columns to * (default: false)
+	NormalizeJoinSyntax      bool // Normalize JOIN syntax: INNER JOIN -> JOIN (default: false)
+	NormalizeOrderByAsc      bool // Remove redundant ASC in ORDER BY (default: false)
+	SortInsertColumns        bool // Sort INSERT column order for comparison (default: false)
+	SortUpdateColumns        bool // Sort UPDATE SET column order for comparison (default: false)
+	RemoveReturningClause    bool // Remove RETURNING clause from INSERT/UPDATE/DELETE (default: false)
+	NormalizeTableQualifiers bool // Remove redundant table qualifiers in simple queries (default: false)
 }
 
 // DefaultOptions returns the default normalizer options.
@@ -63,7 +64,10 @@ func (n *Normalizer) Normalize(query string) string {
 		result = removeComments(result)
 	}
 
-	if n.options.RemoveQuotes {
+	// Handle quotes and keywords together to preserve quoted identifier case
+	if n.options.RemoveQuotes && n.options.UppercaseKeywords {
+		result = removeQuotesPreservingCase(result)
+	} else if n.options.RemoveQuotes {
 		result = removeQuotes(result)
 	}
 
@@ -73,7 +77,8 @@ func (n *Normalizer) Normalize(query string) string {
 
 	result = normalizeWhitespace(result)
 
-	if n.options.UppercaseKeywords {
+	// Only uppercase if we haven't already done it with quote removal
+	if n.options.UppercaseKeywords && !n.options.RemoveQuotes {
 		result = uppercaseKeywords(result)
 	}
 
@@ -143,6 +148,56 @@ func removeQuotes(query string) string {
 	// Remove brackets (SQL Server)
 	re = regexp.MustCompile(`\[([^\]]+)\]`)
 	result = re.ReplaceAllString(result, "$1")
+
+	return result
+}
+
+// removeQuotesPreservingCase removes quotes and uppercases keywords,
+// but preserves the original case of quoted identifiers.
+// This prevents column names like "count" from being uppercased to COUNT.
+func removeQuotesPreservingCase(query string) string {
+	// Step 1: Extract all quoted identifiers and replace with placeholders
+	placeholders := make(map[string]string)
+	counter := 0
+	result := query
+
+	// Process backticks (MySQL)
+	reBacktick := regexp.MustCompile("`([^`]+)`")
+	result = reBacktick.ReplaceAllStringFunc(result, func(match string) string {
+		inner := reBacktick.FindStringSubmatch(match)[1]
+		placeholder := fmt.Sprintf("__QUOTED_%d__", counter)
+		placeholders[placeholder] = inner
+		counter++
+		return placeholder
+	})
+
+	// Process double quotes (PostgreSQL, standard SQL)
+	reDoubleQuote := regexp.MustCompile(`"([^"]+)"`)
+	result = reDoubleQuote.ReplaceAllStringFunc(result, func(match string) string {
+		inner := reDoubleQuote.FindStringSubmatch(match)[1]
+		placeholder := fmt.Sprintf("__QUOTED_%d__", counter)
+		placeholders[placeholder] = inner
+		counter++
+		return placeholder
+	})
+
+	// Process brackets (SQL Server)
+	reBracket := regexp.MustCompile(`\[([^\]]+)\]`)
+	result = reBracket.ReplaceAllStringFunc(result, func(match string) string {
+		inner := reBracket.FindStringSubmatch(match)[1]
+		placeholder := fmt.Sprintf("__QUOTED_%d__", counter)
+		placeholders[placeholder] = inner
+		counter++
+		return placeholder
+	})
+
+	// Step 2: Uppercase keywords (only affects non-quoted parts)
+	result = uppercaseKeywords(result)
+
+	// Step 3: Replace placeholders with original identifiers (without quotes)
+	for placeholder, original := range placeholders {
+		result = strings.Replace(result, placeholder, original, 1)
+	}
 
 	return result
 }
@@ -217,10 +272,10 @@ func normalizeSelectColumns(query string) string {
 			return match
 		}
 
-		selectPart := submatches[1]    // "SELECT "
-		distinctPart := submatches[2]  // "DISTINCT " or ""
+		selectPart := submatches[1]   // "SELECT "
+		distinctPart := submatches[2] // "DISTINCT " or ""
 		// submatches[3] is the column list - we replace this with *
-		fromPart := submatches[4]      // " FROM"
+		fromPart := submatches[4] // " FROM"
 
 		return selectPart + distinctPart + "*" + fromPart
 	})

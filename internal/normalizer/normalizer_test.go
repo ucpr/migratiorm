@@ -644,13 +644,24 @@ func TestNormalizer_Normalize(t *testing.T) {
 				SortUpdateColumns: true,
 			},
 		},
-		// Edge case: UPDATE with expression
-		// Note: "count" is uppercased because it's a SQL keyword (COUNT function)
-		// This is expected behavior - column names matching keywords will be uppercased
+		// Edge case: UPDATE with expression (unquoted column - will be uppercased)
 		{
-			name:     "sorts UPDATE SET with expression",
+			name:     "sorts UPDATE SET with expression unquoted",
 			input:    "UPDATE users SET count = count + 1, name = ? WHERE id = ?",
 			expected: "UPDATE users SET COUNT = COUNT + 1, name = ? WHERE id = ?",
+			options: Options{
+				UnifyPlaceholders: true,
+				RemoveComments:    true,
+				UppercaseKeywords: true,
+				RemoveQuotes:      true,
+				SortUpdateColumns: true,
+			},
+		},
+		// Edge case: UPDATE with quoted keyword column (should preserve case)
+		{
+			name:     "preserves case of quoted keyword column",
+			input:    `UPDATE users SET "count" = "count" + 1, name = ? WHERE id = ?`,
+			expected: "UPDATE users SET count = count + 1, name = ? WHERE id = ?",
 			options: Options{
 				UnifyPlaceholders: true,
 				RemoveComments:    true,
