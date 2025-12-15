@@ -5,6 +5,8 @@ import (
 )
 
 func TestNormalizer_Normalize(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		input    string
@@ -765,6 +767,8 @@ func TestNormalizer_Normalize(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			n := New(tt.options)
 			result := n.Normalize(tt.input)
 			if result != tt.expected {
@@ -775,6 +779,8 @@ func TestNormalizer_Normalize(t *testing.T) {
 }
 
 func TestNormalizer_AllKeywords(t *testing.T) {
+	t.Parallel()
+
 	n := NewDefault()
 
 	// Test all SQL keywords are uppercased
@@ -792,12 +798,16 @@ func TestNormalizer_AllKeywords(t *testing.T) {
 	}
 
 	for _, kw := range keywords {
-		input := kw + " test"
-		result := n.Normalize(input)
-		expected := stringToUpper(kw) + " test"
-		if result != expected {
-			t.Errorf("Keyword %q not uppercased: got %q, want %q", kw, result, expected)
-		}
+		t.Run(kw, func(t *testing.T) {
+			t.Parallel()
+
+			input := kw + " test"
+			result := n.Normalize(input)
+			expected := stringToUpper(kw) + " test"
+			if result != expected {
+				t.Errorf("Keyword %q not uppercased: got %q, want %q", kw, result, expected)
+			}
+		})
 	}
 }
 

@@ -14,6 +14,8 @@ import (
 //
 // With SemanticComparison enabled, SELECT column differences are normalized.
 func TestMigration_FindAll(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New(
 		migratiorm.WithSemanticComparison(true),
 	)
@@ -38,6 +40,8 @@ func TestMigration_FindAll(t *testing.T) {
 // GORM's First() adds ORDER BY and LIMIT, which is semantically different.
 // This test demonstrates detecting such differences.
 func TestMigration_FindByID(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New(
 		migratiorm.WithSemanticComparison(true),
 	)
@@ -66,6 +70,8 @@ func TestMigration_FindByID(t *testing.T) {
 
 // TestMigration_FindByCategory verifies FindByCategory with semantic comparison.
 func TestMigration_FindByCategory(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New(
 		migratiorm.WithSemanticComparison(true),
 	)
@@ -85,6 +91,8 @@ func TestMigration_FindByCategory(t *testing.T) {
 
 // TestMigration_FindByPriceRange verifies queries with multiple conditions.
 func TestMigration_FindByPriceRange(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New(
 		migratiorm.WithSemanticComparison(true),
 	)
@@ -104,6 +112,8 @@ func TestMigration_FindByPriceRange(t *testing.T) {
 
 // TestMigration_Delete verifies that Delete generates equivalent queries.
 func TestMigration_Delete(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New(
 		migratiorm.WithSemanticComparison(true),
 	)
@@ -123,6 +133,8 @@ func TestMigration_Delete(t *testing.T) {
 
 // TestMigration_DebugOutput demonstrates debugging capabilities.
 func TestMigration_DebugOutput(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New(
 		migratiorm.WithSemanticComparison(true),
 	)

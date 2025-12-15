@@ -8,6 +8,8 @@ import (
 )
 
 func TestMigratiorm_BasicUsage(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New()
 
 	m.Expect(func(db *sql.DB) {
@@ -22,6 +24,8 @@ func TestMigratiorm_BasicUsage(t *testing.T) {
 }
 
 func TestMigratiorm_NormalizesWhitespace(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New()
 
 	m.Expect(func(db *sql.DB) {
@@ -36,6 +40,8 @@ func TestMigratiorm_NormalizesWhitespace(t *testing.T) {
 }
 
 func TestMigratiorm_NormalizesKeywords(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New()
 
 	m.Expect(func(db *sql.DB) {
@@ -50,6 +56,8 @@ func TestMigratiorm_NormalizesKeywords(t *testing.T) {
 }
 
 func TestMigratiorm_NormalizesPlaceholders(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New()
 
 	m.Expect(func(db *sql.DB) {
@@ -64,6 +72,8 @@ func TestMigratiorm_NormalizesPlaceholders(t *testing.T) {
 }
 
 func TestMigratiorm_NormalizesQuotes(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New()
 
 	m.Expect(func(db *sql.DB) {
@@ -78,6 +88,8 @@ func TestMigratiorm_NormalizesQuotes(t *testing.T) {
 }
 
 func TestMigratiorm_DetectsDifference(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New()
 
 	m.Expect(func(db *sql.DB) {
@@ -101,6 +113,8 @@ func TestMigratiorm_DetectsDifference(t *testing.T) {
 }
 
 func TestMigratiorm_MultipleQueries(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New()
 
 	m.Expect(func(db *sql.DB) {
@@ -119,6 +133,8 @@ func TestMigratiorm_MultipleQueries(t *testing.T) {
 }
 
 func TestMigratiorm_IgnoreOrder(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New()
 
 	m.Expect(func(db *sql.DB) {
@@ -136,6 +152,8 @@ func TestMigratiorm_IgnoreOrder(t *testing.T) {
 }
 
 func TestMigratiorm_StrictOrderFails(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New()
 
 	m.Expect(func(db *sql.DB) {
@@ -158,6 +176,8 @@ func TestMigratiorm_StrictOrderFails(t *testing.T) {
 }
 
 func TestMigratiorm_ExpectedQueries(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New()
 
 	m.Expect(func(db *sql.DB) {
@@ -171,6 +191,8 @@ func TestMigratiorm_ExpectedQueries(t *testing.T) {
 }
 
 func TestMigratiorm_ActualQueries(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New()
 
 	m.Actual(func(db *sql.DB) {
@@ -185,6 +207,8 @@ func TestMigratiorm_ActualQueries(t *testing.T) {
 }
 
 func TestMigratiorm_WithUnorderedMode(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New(
 		migratiorm.WithCompareMode(migratiorm.CompareUnordered),
 	)
@@ -204,6 +228,8 @@ func TestMigratiorm_WithUnorderedMode(t *testing.T) {
 }
 
 func TestMigratiorm_QueryOperation(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New()
 
 	m.Expect(func(db *sql.DB) {
@@ -230,6 +256,8 @@ func TestMigratiorm_QueryOperation(t *testing.T) {
 }
 
 func TestMigratiorm_RawAndNormalizedQueries(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New()
 
 	m.Expect(func(db *sql.DB) {
@@ -250,6 +278,8 @@ func TestMigratiorm_RawAndNormalizedQueries(t *testing.T) {
 }
 
 func TestMigratiorm_SemanticComparison(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New(
 		migratiorm.WithSemanticComparison(true),
 	)
@@ -267,6 +297,8 @@ func TestMigratiorm_SemanticComparison(t *testing.T) {
 }
 
 func TestMigratiorm_SemanticComparisonWithQuotes(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New(
 		migratiorm.WithSemanticComparison(true),
 	)
@@ -284,6 +316,8 @@ func TestMigratiorm_SemanticComparisonWithQuotes(t *testing.T) {
 }
 
 func TestMigratiorm_SemanticComparisonDisabled(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New(
 		migratiorm.WithSemanticComparison(false), // explicitly disabled
 	)
@@ -306,6 +340,8 @@ func TestMigratiorm_SemanticComparisonDisabled(t *testing.T) {
 }
 
 func TestMigratiorm_SemanticComparisonJoinSyntax(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New(
 		migratiorm.WithSemanticComparison(true),
 	)
@@ -322,6 +358,8 @@ func TestMigratiorm_SemanticComparisonJoinSyntax(t *testing.T) {
 }
 
 func TestMigratiorm_SemanticComparisonOrderByAsc(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New(
 		migratiorm.WithSemanticComparison(true),
 	)
@@ -338,6 +376,8 @@ func TestMigratiorm_SemanticComparisonOrderByAsc(t *testing.T) {
 }
 
 func TestMigratiorm_SemanticComparisonInsertColumns(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New(
 		migratiorm.WithSemanticComparison(true),
 	)
@@ -354,6 +394,8 @@ func TestMigratiorm_SemanticComparisonInsertColumns(t *testing.T) {
 }
 
 func TestMigratiorm_SemanticComparisonUpdateColumns(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New(
 		migratiorm.WithSemanticComparison(true),
 	)
@@ -370,6 +412,8 @@ func TestMigratiorm_SemanticComparisonUpdateColumns(t *testing.T) {
 }
 
 func TestMigratiorm_SemanticComparisonAll(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New(
 		migratiorm.WithSemanticComparison(true),
 	)
@@ -387,6 +431,8 @@ func TestMigratiorm_SemanticComparisonAll(t *testing.T) {
 }
 
 func TestMigratiorm_SemanticComparisonReturningClause(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New(
 		migratiorm.WithSemanticComparison(true),
 	)
@@ -404,6 +450,8 @@ func TestMigratiorm_SemanticComparisonReturningClause(t *testing.T) {
 }
 
 func TestMigratiorm_SemanticComparisonTableQualifiers(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New(
 		migratiorm.WithSemanticComparison(true),
 	)
@@ -421,6 +469,8 @@ func TestMigratiorm_SemanticComparisonTableQualifiers(t *testing.T) {
 }
 
 func TestMigratiorm_SemanticComparisonTableQualifiersPreservedWithJoin(t *testing.T) {
+	t.Parallel()
+
 	m := migratiorm.New(
 		migratiorm.WithSemanticComparison(true),
 	)
