@@ -56,7 +56,8 @@ func (r *SQLBoilerUserRepository) FindByID(ctx context.Context, id int64) (*User
 }
 
 func (r *SQLBoilerUserRepository) FindByAge(ctx context.Context, minAge int) ([]User, error) {
-	query := `SELECT "users"."id", "users"."name", "users"."email", "users"."age" FROM "users" WHERE "age" >= $1`
+	// SQLBoiler uses table-qualified columns with double quotes
+	query := `SELECT "users"."id", "users"."name", "users"."email", "users"."age" FROM "users" WHERE "users"."age" >= $1`
 	_, err := r.db.QueryContext(ctx, query, minAge)
 	return nil, err
 }

@@ -58,13 +58,15 @@ func (r *XOProductRepository) FindByID(ctx context.Context, id int64) (*Product,
 }
 
 func (r *XOProductRepository) FindByCategory(ctx context.Context, categoryID int64) ([]Product, error) {
-	query := `SELECT id, name, description, price, category_id FROM products WHERE category_id = $1`
+	// xo typically uses table-qualified columns
+	query := `SELECT id, name, description, price, category_id FROM products WHERE products.category_id = $1`
 	_, err := r.db.QueryContext(ctx, query, categoryID)
 	return nil, err
 }
 
 func (r *XOProductRepository) FindByPriceRange(ctx context.Context, minPrice, maxPrice int64) ([]Product, error) {
-	query := `SELECT id, name, description, price, category_id FROM products WHERE price >= $1 AND price <= $2`
+	// xo typically uses table-qualified columns
+	query := `SELECT id, name, description, price, category_id FROM products WHERE products.price >= $1 AND products.price <= $2`
 	_, err := r.db.QueryContext(ctx, query, minPrice, maxPrice)
 	return nil, err
 }

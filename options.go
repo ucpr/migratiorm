@@ -74,6 +74,8 @@ func WithRemoveQuotes(enabled bool) Option {
 //   - INSERT column order is sorted alphabetically
 //   - UPDATE SET column order is sorted alphabetically
 //   - RETURNING clause is removed (INSERT ... RETURNING id → INSERT ...)
+//   - Table qualifiers are removed in simple queries (users.age → age)
+//     Note: Queries with JOINs or subqueries are not modified to avoid ambiguity.
 func WithSemanticComparison(enabled bool) Option {
 	return func(o *options) {
 		o.normalizerOptions.NormalizeSelectColumns = enabled
@@ -82,6 +84,7 @@ func WithSemanticComparison(enabled bool) Option {
 		o.normalizerOptions.SortInsertColumns = enabled
 		o.normalizerOptions.SortUpdateColumns = enabled
 		o.normalizerOptions.RemoveReturningClause = enabled
+		o.normalizerOptions.NormalizeTableQualifiers = enabled
 	}
 }
 

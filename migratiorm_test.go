@@ -402,3 +402,37 @@ func TestMigratiorm_SemanticComparisonReturningClause(t *testing.T) {
 
 	m.Assert(t)
 }
+
+func TestMigratiorm_SemanticComparisonTableQualifiers(t *testing.T) {
+	m := migratiorm.New(
+		migratiorm.WithSemanticComparison(true),
+	)
+
+	// SQLBoiler style (with table qualifier) vs GORM style (without table qualifier)
+	m.Expect(func(db *sql.DB) {
+		db.Query("SELECT * FROM users WHERE users.age >= ?", 18)
+	})
+
+	m.Actual(func(db *sql.DB) {
+		db.Query("SELECT * FROM users WHERE age >= ?", 18)
+	})
+
+	m.Assert(t)
+}
+
+func TestMigratiorm_SemanticComparisonTableQualifiersPreservedWithJoin(t *testing.T) {
+	m := migratiorm.New(
+		migratiorm.WithSemanticComparison(true),
+	)
+
+	// Table qualifiers should NOT be removed when JOINs are present
+	m.Expect(func(db *sql.DB) {
+		db.Query("SELECT * FROM users JOIN orders ON users.id = orders.user_id WHERE users.age >= ?", 18)
+	})
+
+	m.Actual(func(db *sql.DB) {
+		db.Query("SELECT * FROM users JOIN orders ON users.id = orders.user_id WHERE users.age >= ?", 18)
+	})
+
+	m.Assert(t)
+}

@@ -470,6 +470,115 @@ func TestNormalizer_Normalize(t *testing.T) {
 				RemoveReturningClause: false,
 			},
 		},
+		// NormalizeTableQualifiers tests
+		{
+			name:     "removes table qualifier in simple SELECT",
+			input:    "SELECT * FROM users WHERE users.age >= ?",
+			expected: "SELECT * FROM users WHERE age >= ?",
+			options: Options{
+				UnifyPlaceholders:        true,
+				RemoveComments:           true,
+				UppercaseKeywords:        true,
+				RemoveQuotes:             true,
+				NormalizeTableQualifiers: true,
+			},
+		},
+		{
+			name:     "removes table qualifier in DELETE",
+			input:    "DELETE FROM products WHERE products.id = ?",
+			expected: "DELETE FROM products WHERE id = ?",
+			options: Options{
+				UnifyPlaceholders:        true,
+				RemoveComments:           true,
+				UppercaseKeywords:        true,
+				RemoveQuotes:             true,
+				NormalizeTableQualifiers: true,
+			},
+		},
+		{
+			name:     "removes table qualifier in UPDATE",
+			input:    "UPDATE users SET name = ? WHERE users.id = ?",
+			expected: "UPDATE users SET name = ? WHERE id = ?",
+			options: Options{
+				UnifyPlaceholders:        true,
+				RemoveComments:           true,
+				UppercaseKeywords:        true,
+				RemoveQuotes:             true,
+				NormalizeTableQualifiers: true,
+			},
+		},
+		{
+			name:     "removes multiple table qualifiers",
+			input:    "SELECT * FROM users WHERE users.age >= ? AND users.status = ?",
+			expected: "SELECT * FROM users WHERE age >= ? AND status = ?",
+			options: Options{
+				UnifyPlaceholders:        true,
+				RemoveComments:           true,
+				UppercaseKeywords:        true,
+				RemoveQuotes:             true,
+				NormalizeTableQualifiers: true,
+			},
+		},
+		{
+			name:     "preserves table qualifier with JOIN",
+			input:    "SELECT * FROM users JOIN orders ON users.id = orders.user_id WHERE users.age >= ?",
+			expected: "SELECT * FROM users JOIN orders ON users.id = orders.user_id WHERE users.age >= ?",
+			options: Options{
+				UnifyPlaceholders:        true,
+				RemoveComments:           true,
+				UppercaseKeywords:        true,
+				RemoveQuotes:             true,
+				NormalizeTableQualifiers: true,
+			},
+		},
+		{
+			name:     "preserves table qualifier with LEFT JOIN",
+			input:    "SELECT * FROM users LEFT JOIN orders ON users.id = orders.user_id",
+			expected: "SELECT * FROM users LEFT JOIN orders ON users.id = orders.user_id",
+			options: Options{
+				UnifyPlaceholders:        true,
+				RemoveComments:           true,
+				UppercaseKeywords:        true,
+				RemoveQuotes:             true,
+				NormalizeTableQualifiers: true,
+			},
+		},
+		{
+			name:     "preserves table qualifier with subquery",
+			input:    "SELECT * FROM users WHERE users.id IN (SELECT orders.user_id FROM orders)",
+			expected: "SELECT * FROM users WHERE users.id IN (SELECT orders.user_id FROM orders)",
+			options: Options{
+				UnifyPlaceholders:        true,
+				RemoveComments:           true,
+				UppercaseKeywords:        true,
+				RemoveQuotes:             true,
+				NormalizeTableQualifiers: true,
+			},
+		},
+		{
+			name:     "preserves table qualifier when disabled",
+			input:    "SELECT * FROM users WHERE users.age >= ?",
+			expected: "SELECT * FROM users WHERE users.age >= ?",
+			options: Options{
+				UnifyPlaceholders:        true,
+				RemoveComments:           true,
+				UppercaseKeywords:        true,
+				RemoveQuotes:             true,
+				NormalizeTableQualifiers: false,
+			},
+		},
+		{
+			name:     "handles case-insensitive table name matching",
+			input:    "SELECT * FROM Users WHERE USERS.age >= ?",
+			expected: "SELECT * FROM Users WHERE age >= ?",
+			options: Options{
+				UnifyPlaceholders:        true,
+				RemoveComments:           true,
+				UppercaseKeywords:        true,
+				RemoveQuotes:             true,
+				NormalizeTableQualifiers: true,
+			},
+		},
 	}
 
 	for _, tt := range tests {

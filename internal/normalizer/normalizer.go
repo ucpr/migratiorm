@@ -8,31 +8,33 @@ import (
 
 // Options contains configuration for the normalizer.
 type Options struct {
-	UnifyPlaceholders      bool // Unify placeholders to ? (default: true)
-	RemoveComments         bool // Remove SQL comments (default: true)
-	UppercaseKeywords      bool // Convert keywords to uppercase (default: true)
-	RemoveQuotes           bool // Remove identifier quotes (default: true)
-	NormalizeSelectColumns bool // Normalize SELECT columns to * (default: false)
-	NormalizeJoinSyntax    bool // Normalize JOIN syntax: INNER JOIN -> JOIN (default: false)
-	NormalizeOrderByAsc    bool // Remove redundant ASC in ORDER BY (default: false)
-	SortInsertColumns      bool // Sort INSERT column order for comparison (default: false)
-	SortUpdateColumns      bool // Sort UPDATE SET column order for comparison (default: false)
-	RemoveReturningClause  bool // Remove RETURNING clause from INSERT/UPDATE/DELETE (default: false)
+	UnifyPlaceholders         bool // Unify placeholders to ? (default: true)
+	RemoveComments            bool // Remove SQL comments (default: true)
+	UppercaseKeywords         bool // Convert keywords to uppercase (default: true)
+	RemoveQuotes              bool // Remove identifier quotes (default: true)
+	NormalizeSelectColumns    bool // Normalize SELECT columns to * (default: false)
+	NormalizeJoinSyntax       bool // Normalize JOIN syntax: INNER JOIN -> JOIN (default: false)
+	NormalizeOrderByAsc       bool // Remove redundant ASC in ORDER BY (default: false)
+	SortInsertColumns         bool // Sort INSERT column order for comparison (default: false)
+	SortUpdateColumns         bool // Sort UPDATE SET column order for comparison (default: false)
+	RemoveReturningClause     bool // Remove RETURNING clause from INSERT/UPDATE/DELETE (default: false)
+	NormalizeTableQualifiers  bool // Remove redundant table qualifiers in simple queries (default: false)
 }
 
 // DefaultOptions returns the default normalizer options.
 func DefaultOptions() Options {
 	return Options{
-		UnifyPlaceholders:      true,
-		RemoveComments:         true,
-		UppercaseKeywords:      true,
-		RemoveQuotes:           true,
-		NormalizeSelectColumns: false,
-		NormalizeJoinSyntax:    false,
-		NormalizeOrderByAsc:    false,
-		SortInsertColumns:      false,
-		SortUpdateColumns:      false,
-		RemoveReturningClause:  false,
+		UnifyPlaceholders:        true,
+		RemoveComments:           true,
+		UppercaseKeywords:        true,
+		RemoveQuotes:             true,
+		NormalizeSelectColumns:   false,
+		NormalizeJoinSyntax:      false,
+		NormalizeOrderByAsc:      false,
+		SortInsertColumns:        false,
+		SortUpdateColumns:        false,
+		RemoveReturningClause:    false,
+		NormalizeTableQualifiers: false,
 	}
 }
 
@@ -97,6 +99,10 @@ func (n *Normalizer) Normalize(query string) string {
 
 	if n.options.RemoveReturningClause {
 		result = removeReturningClause(result)
+	}
+
+	if n.options.NormalizeTableQualifiers {
+		result = normalizeTableQualifiers(result)
 	}
 
 	return strings.TrimSpace(result)
@@ -455,4 +461,101 @@ func removeReturningClause(query string) string {
 	// - Expressions: RETURNING id, created_at
 	re := regexp.MustCompile(`(?i)\s+RETURNING\s+.+$`)
 	return re.ReplaceAllString(query, "")
+}
+
+// normalizeTableQualifiers removes redundant table qualifiers from simple queries.
+// This only applies to queries without JOINs or subqueries where table qualifiers are unnecessary.
+// Examples:
+//   - SELECT * FROM users WHERE users.age >= ? → SELECT * FROM users WHERE age >= ?
+//   - DELETE FROM products WHERE products.id = ? → DELETE FROM products WHERE id = ?
+//
+// Queries with JOINs or subqueries are left unchanged to avoid ambiguity:
+//   - SELECT * FROM users JOIN orders ON users.id = orders.user_id WHERE users.age >= ? → unchanged
+//   - SELECT * FROM users WHERE users.id IN (SELECT user_id FROM orders) → unchanged
+func normalizeTableQualifiers(query string) string {
+	upperQuery := strings.ToUpper(query)
+
+	// Check for JOINs - if present, don't normalize (need qualifiers for disambiguation)
+	if hasJoin(upperQuery) {
+		return query
+	}
+
+	// Check for subqueries - if present, don't normalize
+	if hasSubquery(upperQuery) {
+		return query
+	}
+
+	// Extract table name from the query
+	tableName := extractTableName(query)
+	if tableName == "" {
+		return query
+	}
+
+	// Remove table qualifier (tablename.) from column references
+	// Match: tablename.columnname (case-insensitive for table name)
+	// Be careful not to match inside string literals
+	pattern := `(?i)\b` + regexp.QuoteMeta(tableName) + `\.(\w+)`
+	re := regexp.MustCompile(pattern)
+	return re.ReplaceAllString(query, "$1")
+}
+
+// hasJoin checks if the query contains any JOIN clause.
+func hasJoin(upperQuery string) bool {
+	// Check for various JOIN types
+	joinPatterns := []string{
+		" JOIN ",
+		" LEFT JOIN ",
+		" RIGHT JOIN ",
+		" INNER JOIN ",
+		" OUTER JOIN ",
+		" CROSS JOIN ",
+		" FULL JOIN ",
+		" NATURAL JOIN ",
+	}
+	for _, pattern := range joinPatterns {
+		if strings.Contains(upperQuery, pattern) {
+			return true
+		}
+	}
+	return false
+}
+
+// hasSubquery checks if the query contains a subquery.
+func hasSubquery(upperQuery string) bool {
+	// Look for SELECT within parentheses (common subquery patterns)
+	// Patterns: (SELECT, IN (SELECT, EXISTS (SELECT, etc.
+	subqueryPatterns := []string{
+		"(SELECT ",
+		"( SELECT ",
+	}
+	for _, pattern := range subqueryPatterns {
+		if strings.Contains(upperQuery, pattern) {
+			return true
+		}
+	}
+	return false
+}
+
+// extractTableName extracts the main table name from a SQL query.
+func extractTableName(query string) string {
+	// Try to match FROM clause for SELECT/DELETE
+	// Pattern: FROM tablename (with optional schema)
+	fromRe := regexp.MustCompile(`(?i)\bFROM\s+(\w+)`)
+	if matches := fromRe.FindStringSubmatch(query); len(matches) >= 2 {
+		return matches[1]
+	}
+
+	// Try to match UPDATE tablename
+	updateRe := regexp.MustCompile(`(?i)\bUPDATE\s+(\w+)`)
+	if matches := updateRe.FindStringSubmatch(query); len(matches) >= 2 {
+		return matches[1]
+	}
+
+	// Try to match INSERT INTO tablename
+	insertRe := regexp.MustCompile(`(?i)\bINSERT\s+INTO\s+(\w+)`)
+	if matches := insertRe.FindStringSubmatch(query); len(matches) >= 2 {
+		return matches[1]
+	}
+
+	return ""
 }
