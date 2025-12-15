@@ -248,3 +248,59 @@ func TestMigratiorm_RawAndNormalizedQueries(t *testing.T) {
 		t.Errorf("Expected normalized query %q, got %q", expected, queries[0].Normalized)
 	}
 }
+
+func TestMigratiorm_SemanticComparison(t *testing.T) {
+	m := migratiorm.New(
+		migratiorm.WithSemanticComparison(true),
+	)
+
+	// SELECT * vs explicit columns should be equivalent with semantic comparison
+	m.Expect(func(db *sql.DB) {
+		db.Query("SELECT id, name, email FROM users WHERE age > ?", 18)
+	})
+
+	m.Actual(func(db *sql.DB) {
+		db.Query("SELECT * FROM users WHERE age > ?", 18)
+	})
+
+	m.Assert(t)
+}
+
+func TestMigratiorm_SemanticComparisonWithQuotes(t *testing.T) {
+	m := migratiorm.New(
+		migratiorm.WithSemanticComparison(true),
+	)
+
+	// PostgreSQL style vs MySQL style with different column selection
+	m.Expect(func(db *sql.DB) {
+		db.Query(`SELECT "users"."id", "users"."name" FROM "users" WHERE "age" > $1`, 18)
+	})
+
+	m.Actual(func(db *sql.DB) {
+		db.Query("SELECT * FROM `users` WHERE `age` > ?", 18)
+	})
+
+	m.Assert(t)
+}
+
+func TestMigratiorm_SemanticComparisonDisabled(t *testing.T) {
+	m := migratiorm.New(
+		migratiorm.WithSemanticComparison(false), // explicitly disabled
+	)
+
+	m.Expect(func(db *sql.DB) {
+		db.Query("SELECT id, name FROM users", 18)
+	})
+
+	m.Actual(func(db *sql.DB) {
+		db.Query("SELECT * FROM users", 18)
+	})
+
+	// These should be different when semantic comparison is disabled
+	expected := m.ExpectedQueries()
+	actual := m.ActualQueries()
+
+	if expected[0].Normalized == actual[0].Normalized {
+		t.Error("Expected queries to differ when semantic comparison is disabled")
+	}
+}

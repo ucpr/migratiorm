@@ -128,6 +128,79 @@ func TestNormalizer_Normalize(t *testing.T) {
 				RemoveQuotes:      true,
 			},
 		},
+		// NormalizeSelectColumns tests
+		{
+			name:  "normalizes explicit columns to star",
+			input: "SELECT id, name, email FROM users",
+			expected: "SELECT * FROM users",
+			options: Options{
+				UnifyPlaceholders:      true,
+				RemoveComments:         true,
+				UppercaseKeywords:      true,
+				RemoveQuotes:           true,
+				NormalizeSelectColumns: true,
+			},
+		},
+		{
+			name:  "keeps star unchanged",
+			input: "SELECT * FROM users",
+			expected: "SELECT * FROM users",
+			options: Options{
+				UnifyPlaceholders:      true,
+				RemoveComments:         true,
+				UppercaseKeywords:      true,
+				RemoveQuotes:           true,
+				NormalizeSelectColumns: true,
+			},
+		},
+		{
+			name:  "normalizes qualified columns to star",
+			input: "SELECT users.id, users.name FROM users",
+			expected: "SELECT * FROM users",
+			options: Options{
+				UnifyPlaceholders:      true,
+				RemoveComments:         true,
+				UppercaseKeywords:      true,
+				RemoveQuotes:           true,
+				NormalizeSelectColumns: true,
+			},
+		},
+		{
+			name:  "preserves DISTINCT with normalized columns",
+			input: "SELECT DISTINCT id, name FROM users",
+			expected: "SELECT DISTINCT * FROM users",
+			options: Options{
+				UnifyPlaceholders:      true,
+				RemoveComments:         true,
+				UppercaseKeywords:      true,
+				RemoveQuotes:           true,
+				NormalizeSelectColumns: true,
+			},
+		},
+		{
+			name:  "normalizes columns with WHERE clause",
+			input: "SELECT id, name FROM users WHERE age > ?",
+			expected: "SELECT * FROM users WHERE age > ?",
+			options: Options{
+				UnifyPlaceholders:      true,
+				RemoveComments:         true,
+				UppercaseKeywords:      true,
+				RemoveQuotes:           true,
+				NormalizeSelectColumns: true,
+			},
+		},
+		{
+			name:  "does not normalize when disabled",
+			input: "SELECT id, name FROM users",
+			expected: "SELECT id, name FROM users",
+			options: Options{
+				UnifyPlaceholders:      true,
+				RemoveComments:         true,
+				UppercaseKeywords:      true,
+				RemoveQuotes:           true,
+				NormalizeSelectColumns: false,
+			},
+		},
 	}
 
 	for _, tt := range tests {

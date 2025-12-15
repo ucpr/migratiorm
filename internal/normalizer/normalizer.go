@@ -7,19 +7,21 @@ import (
 
 // Options contains configuration for the normalizer.
 type Options struct {
-	UnifyPlaceholders bool // Unify placeholders to ? (default: true)
-	RemoveComments    bool // Remove SQL comments (default: true)
-	UppercaseKeywords bool // Convert keywords to uppercase (default: true)
-	RemoveQuotes      bool // Remove identifier quotes (default: true)
+	UnifyPlaceholders     bool // Unify placeholders to ? (default: true)
+	RemoveComments        bool // Remove SQL comments (default: true)
+	UppercaseKeywords     bool // Convert keywords to uppercase (default: true)
+	RemoveQuotes          bool // Remove identifier quotes (default: true)
+	NormalizeSelectColumns bool // Normalize SELECT columns to * (default: false)
 }
 
 // DefaultOptions returns the default normalizer options.
 func DefaultOptions() Options {
 	return Options{
-		UnifyPlaceholders: true,
-		RemoveComments:    true,
-		UppercaseKeywords: true,
-		RemoveQuotes:      true,
+		UnifyPlaceholders:     true,
+		RemoveComments:        true,
+		UppercaseKeywords:     true,
+		RemoveQuotes:          true,
+		NormalizeSelectColumns: false,
 	}
 }
 
@@ -60,6 +62,10 @@ func (n *Normalizer) Normalize(query string) string {
 
 	if n.options.UppercaseKeywords {
 		result = uppercaseKeywords(result)
+	}
+
+	if n.options.NormalizeSelectColumns {
+		result = normalizeSelectColumns(result)
 	}
 
 	return strings.TrimSpace(result)
@@ -146,4 +152,39 @@ func uppercaseKeywords(query string) string {
 		result = re.ReplaceAllString(result, keyword)
 	}
 	return result
+}
+
+// normalizeSelectColumns normalizes SELECT column lists to *.
+// This enables semantic comparison where "SELECT *" and "SELECT id, name" are considered equivalent.
+func normalizeSelectColumns(query string) string {
+	// Match SELECT ... FROM pattern and replace the column list with *
+	// This handles:
+	// - SELECT * FROM ...
+	// - SELECT id, name, email FROM ...
+	// - SELECT users.id, users.name FROM ...
+	// - SELECT DISTINCT id, name FROM ...
+	//
+	// Note: This is a simplified implementation that may not handle all edge cases
+	// such as subqueries in SELECT clause, CASE expressions, etc.
+
+	// Pattern explanation:
+	// SELECT\s+ - SELECT keyword followed by whitespace
+	// (DISTINCT\s+)? - optional DISTINCT keyword
+	// .+? - column list (non-greedy)
+	// \s+FROM\b - whitespace followed by FROM keyword
+	re := regexp.MustCompile(`(?i)(SELECT\s+)(DISTINCT\s+)?(.+?)(\s+FROM\b)`)
+
+	return re.ReplaceAllStringFunc(query, func(match string) string {
+		submatches := re.FindStringSubmatch(match)
+		if len(submatches) < 5 {
+			return match
+		}
+
+		selectPart := submatches[1]    // "SELECT "
+		distinctPart := submatches[2]  // "DISTINCT " or ""
+		// submatches[3] is the column list - we replace this with *
+		fromPart := submatches[4]      // " FROM"
+
+		return selectPart + distinctPart + "*" + fromPart
+	})
 }

@@ -12,14 +12,11 @@ import (
 // SQLBoiler: SELECT "users"."id", "users"."name", ... FROM "users"
 // GORM:      SELECT * FROM `users`
 //
-// Note: These queries are semantically equivalent but structurally different.
-// migratiorm normalizes quotes and whitespace, but SELECT * vs explicit columns
-// will still differ. In real migration scenarios, you may need to adjust queries
-// or use IgnoreOrder for cases where column order doesn't matter.
+// With SemanticComparison enabled, SELECT column differences are normalized.
 func TestMigration_FindAll(t *testing.T) {
-	t.Skip("SELECT * vs explicit columns are structurally different - shown for demonstration")
-
-	m := migratiorm.New()
+	m := migratiorm.New(
+		migratiorm.WithSemanticComparison(true),
+	)
 
 	m.Expect(func(db *sql.DB) {
 		repo := NewSQLBoilerUserRepository(db)
@@ -36,9 +33,9 @@ func TestMigration_FindAll(t *testing.T) {
 
 // TestMigration_FindByID verifies that FindByID generates equivalent queries.
 func TestMigration_FindByID(t *testing.T) {
-	t.Skip("SELECT * vs explicit columns are structurally different - shown for demonstration")
-
-	m := migratiorm.New()
+	m := migratiorm.New(
+		migratiorm.WithSemanticComparison(true),
+	)
 
 	m.Expect(func(db *sql.DB) {
 		repo := NewSQLBoilerUserRepository(db)
@@ -48,6 +45,25 @@ func TestMigration_FindByID(t *testing.T) {
 	m.Actual(func(db *sql.DB) {
 		repo := NewGORMUserRepository(db)
 		repo.FindByID(context.Background(), 1)
+	})
+
+	m.Assert(t)
+}
+
+// TestMigration_FindByAge verifies FindByAge with semantic comparison.
+func TestMigration_FindByAge(t *testing.T) {
+	m := migratiorm.New(
+		migratiorm.WithSemanticComparison(true),
+	)
+
+	m.Expect(func(db *sql.DB) {
+		repo := NewSQLBoilerUserRepository(db)
+		repo.FindByAge(context.Background(), 18)
+	})
+
+	m.Actual(func(db *sql.DB) {
+		repo := NewGORMUserRepository(db)
+		repo.FindByAge(context.Background(), 18)
 	})
 
 	m.Assert(t)

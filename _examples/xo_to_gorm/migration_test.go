@@ -12,11 +12,11 @@ import (
 // xo:   SELECT id, name, description, price, category_id FROM products
 // GORM: SELECT * FROM `products`
 //
-// Note: These are semantically equivalent but structurally different.
+// With SemanticComparison enabled, SELECT column differences are normalized.
 func TestMigration_FindAll(t *testing.T) {
-	t.Skip("SELECT * vs explicit columns are structurally different - shown for demonstration")
-
-	m := migratiorm.New()
+	m := migratiorm.New(
+		migratiorm.WithSemanticComparison(true),
+	)
 
 	m.Expect(func(db *sql.DB) {
 		repo := NewXOProductRepository(db)
@@ -33,9 +33,9 @@ func TestMigration_FindAll(t *testing.T) {
 
 // TestMigration_FindByID verifies that FindByID generates equivalent queries.
 func TestMigration_FindByID(t *testing.T) {
-	t.Skip("SELECT * vs explicit columns are structurally different - shown for demonstration")
-
-	m := migratiorm.New()
+	m := migratiorm.New(
+		migratiorm.WithSemanticComparison(true),
+	)
 
 	m.Expect(func(db *sql.DB) {
 		repo := NewXOProductRepository(db)
@@ -50,11 +50,30 @@ func TestMigration_FindByID(t *testing.T) {
 	m.Assert(t)
 }
 
+// TestMigration_FindByCategory verifies FindByCategory with semantic comparison.
+func TestMigration_FindByCategory(t *testing.T) {
+	m := migratiorm.New(
+		migratiorm.WithSemanticComparison(true),
+	)
+
+	m.Expect(func(db *sql.DB) {
+		repo := NewXOProductRepository(db)
+		repo.FindByCategory(context.Background(), 1)
+	})
+
+	m.Actual(func(db *sql.DB) {
+		repo := NewGORMProductRepository(db)
+		repo.FindByCategory(context.Background(), 1)
+	})
+
+	m.Assert(t)
+}
+
 // TestMigration_FindByPriceRange verifies queries with multiple conditions.
 func TestMigration_FindByPriceRange(t *testing.T) {
-	t.Skip("SELECT * vs explicit columns are structurally different - shown for demonstration")
-
-	m := migratiorm.New()
+	m := migratiorm.New(
+		migratiorm.WithSemanticComparison(true),
+	)
 
 	m.Expect(func(db *sql.DB) {
 		repo := NewXOProductRepository(db)

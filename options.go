@@ -54,6 +54,15 @@ func WithRemoveQuotes(enabled bool) Option {
 	}
 }
 
+// WithSemanticComparison enables semantic comparison mode.
+// When enabled, SELECT column lists are normalized to *, making
+// "SELECT *" and "SELECT id, name" semantically equivalent.
+func WithSemanticComparison(enabled bool) Option {
+	return func(o *options) {
+		o.normalizerOptions.NormalizeSelectColumns = enabled
+	}
+}
+
 // AssertOption configures assertion behavior.
 type AssertOption func(*assertOptions)
 
